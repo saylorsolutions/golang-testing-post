@@ -3,6 +3,8 @@ package persistence
 import (
 	"runtime/debug"
 	"testing"
+
+	testify "github.com/stretchr/testify/require"
 )
 
 func TestGetEntryStore(t *testing.T) {
@@ -14,12 +16,9 @@ func TestGetEntryStore(t *testing.T) {
 	}()
 
 	trackerFileName = "testfile.json"
+	assert := testify.New(t)
 
 	store, err := GetEntryStore()
-	if err != nil {
-		t.Fatalf("Failed to get store: %v\n", err)
-	}
-	if store == nil {
-		t.Fatalf("Store is nil")
-	}
+	assert.NoError(err, "Failed to get store: %v\n", err)
+	assert.NotNil(store)
 }
