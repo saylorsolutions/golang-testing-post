@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"time"
 )
 
 var trackerFileName = ".tracker.json"
@@ -18,11 +19,36 @@ type jsonEntryStore struct {
 }
 
 func (j *jsonEntryStore) ListEntriesToday() ([]string, error) {
-	panic("implement me")
+	var entries []string
+	now := time.Now()
+	todayThreshold := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	for _, e := range j.entries {
+		if e.Start.After(todayThreshold) || e.End.After(todayThreshold) {
+			entries = append(entries, formatEntry(e))
+		}
+	}
+	return entries, nil
+}
+
+func formatEntry(entry *TimeEntry) string {
+	return fmt.Sprintf("%s - %s: %s", entry.Start.Format("15:04:05"), entry.End.Format("15:04:05"), entry.Description)
 }
 
 func (j *jsonEntryStore) SaveEntry(entry *TimeEntry) error {
-	panic("implement me")
+	j.entries = append(j.entries, entry)
+	data, err := json.Marshal(j.entries)
+	if err != nil {
+		return ErrFailWrite(fmt.Errorf("failed to marshal entries to JSON: %v\n", err))
+	}
+	storePath, err := getStorePath()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(storePath, data, 0644)
+	if err != nil {
+		return ErrFailWrite(fmt.Errorf("failed to write entries to file: %v\n", err))
+	}
+	return nil
 }
 
 func GetEntryStore() (store EntryStore, err error) {
@@ -42,11 +68,10 @@ func GetEntryStore() (store EntryStore, err error) {
 }
 
 func loadStoreFile() ([]byte, error) {
-	homeDir, err := os.UserHomeDir()
+	storePath, err := getStorePath()
 	if err != nil {
-		return nil, ErrFailRead(errors.New("unable to locate user home dir"))
+		return nil, err
 	}
-	storePath := path.Join(homeDir, trackerFileName)
 	storeFile, err := os.OpenFile(storePath, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return nil, ErrFailRead(fmt.Errorf("unable to open JSON store: %v\n", err))
@@ -58,4 +83,13 @@ func loadStoreFile() ([]byte, error) {
 		return nil, ErrFailRead(fmt.Errorf("unable to read store file: %v\n", err))
 	}
 	return data, err
+}
+
+func getStorePath() (storePath string, err error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", ErrFailRead(errors.New("unable to locate user home dir"))
+	}
+	storePath = path.Join(homeDir, trackerFileName)
+	return storePath, nil
 }
