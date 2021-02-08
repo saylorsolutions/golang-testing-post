@@ -15,3 +15,6 @@ type ErrFailRead error
 
 // ErrFailWrite indicates that a write operation failed.
 type ErrFailWrite error
+
+// ErrValidation indicates that an entry did not meet the required validation criteria for persistence.
+type ErrValidation error

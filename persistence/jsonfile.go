@@ -35,6 +35,10 @@ func formatEntry(entry *TimeEntry) string {
 }
 
 func (j *jsonEntryStore) SaveEntry(entry *TimeEntry) error {
+	err := validateSaveEntry(entry)
+	if err != nil {
+		return err
+	}
 	j.entries = append(j.entries, entry)
 	data, err := json.Marshal(j.entries)
 	if err != nil {
@@ -47,6 +51,25 @@ func (j *jsonEntryStore) SaveEntry(entry *TimeEntry) error {
 	err = ioutil.WriteFile(storePath, data, 0644)
 	if err != nil {
 		return ErrFailWrite(fmt.Errorf("failed to write entries to file: %v\n", err))
+	}
+	return nil
+}
+
+func validateSaveEntry(entry *TimeEntry) error {
+	if entry == nil {
+		return ErrValidation(errors.New("nil entry"))
+	}
+	if entry.Start == zero {
+		return ErrValidation(errors.New("missing start time"))
+	}
+	if entry.End == zero {
+		return ErrValidation(errors.New("missing end time"))
+	}
+	if entry.End.Before(entry.Start) {
+		return ErrValidation(fmt.Errorf("entry start time is before end time: %s", formatEntry(entry)))
+	}
+	if entry.Description == "" {
+		return ErrValidation(errors.New("empty entry description"))
 	}
 	return nil
 }

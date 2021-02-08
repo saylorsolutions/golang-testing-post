@@ -81,6 +81,57 @@ func TestJsonEntryStore_SaveAndRetrieve(t *testing.T) {
 	assert.Equal(formatEntry(entry), entries[0])
 }
 
+func TestJsonEntryStore_SaveEntryNeg(t *testing.T) {
+	// Like I said, this comes up a lot.
+	defer func() {
+		if r := recover(); r != nil {
+			debug.PrintStack()
+			t.Fatalf("Panic recovered: %v\n", r)
+		}
+	}()
+
+	tests := map[string]*TimeEntry{
+		"Nil entry": nil,
+		"Missing start time": {
+			Start:       zero, // "zero" is defined in dto.go as `var zero = time.Time{}`
+			End:         time.Now(),
+			Description: "abc",
+		},
+		"Missing end time": {
+			Start:       time.Now(),
+			End:         zero,
+			Description: "abc",
+		},
+		"Missing description": {
+			Start:       time.Now().Add(-5 * time.Second),
+			End:         time.Now(),
+			Description: "",
+		},
+		"End before start": {
+			Start:       time.Now(),
+			End:         time.Now().Add(-5 * time.Second),
+			Description: "abc",
+		},
+	}
+
+	for name, entry := range tests {
+		t.Run(name, func(t *testing.T) {
+			assert := testify.New(t)
+			trackerFileName = "testfile.json"
+			defer cleanupTestFile()
+
+			store, err := GetEntryStore()
+			assert.NoError(err, "Failed to get store: %v\n", err)
+			assert.NotNil(store)
+
+			err = store.SaveEntry(entry)
+			assert.Error(err)
+			_, ok := err.(ErrValidation)
+			assert.True(ok, "Error should be an ErrValidation")
+		})
+	}
+}
+
 func cleanupTestFile() {
 	// Delete the file when we're done
 	storePath, err := getStorePath()
